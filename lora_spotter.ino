@@ -25,38 +25,6 @@ DisplayManager displayMgr;
 SemaphoreHandle_t gpsMutex;
 GPSLocation sharedGpsLocation;
 
-// Beep helper functions
-void beepChirp(uint16_t durationMs = 30) {
-    #if defined(BUZZER_PIN)
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(durationMs);
-    digitalWrite(BUZZER_PIN, LOW);
-    #endif
-}
-
-void soundAlarmPattern() {
-    #if defined(BUZZER_PIN)
-    for (int i = 0; i < 4; i++) {
-        digitalWrite(BUZZER_PIN, HIGH);
-        delay(120);
-        digitalWrite(BUZZER_PIN, LOW);
-        delay(80);
-    }
-    #endif
-}
-
-void soundAckPattern() {
-    #if defined(BUZZER_PIN)
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(40);
-    digitalWrite(BUZZER_PIN, LOW);
-    delay(40);
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(80);
-    digitalWrite(BUZZER_PIN, LOW);
-    #endif
-}
-
 // ==============================================================================
 // CORE 0 TASK: Radio Packet Handling & GPS NMEA Decoding
 // ==============================================================================
@@ -82,7 +50,7 @@ void Task_RadioGPS(void* pvParameters) {
             double targetLat = (double)rxMsg.packet.lat_scaled / 1000000.0;
             double targetLon = (double)rxMsg.packet.lon_scaled / 1000000.0;
 
-            // Trigger visual & audible alarm
+            // Trigger visual alarm popup
             displayMgr.triggerAlertPopup(
                 rxMsg.packet.src_node,
                 rxMsg.packet.preset_code,
@@ -90,9 +58,6 @@ void Task_RadioGPS(void* pvParameters) {
                 targetLon,
                 rxMsg.rssi
             );
-
-            // Beep the emergency siren
-            soundAlarmPattern();
         }
 
         // 4. Check if a delivery receipt (ACK) arrived for our last sent message
@@ -101,7 +66,6 @@ void Task_RadioGPS(void* pvParameters) {
         if (radioMgr.checkAckReceived(ackNode, ackRssi)) {
             Serial.printf("[LORA ACK] Delivery confirmed by Node 0x%02X (RSSI: %.1f dBm)\n", ackNode, ackRssi);
             displayMgr.triggerAckPopup(ackNode, ackRssi);
-            soundAckPattern();
         }
 
         // Yield CPU briefly to prevent watchdog trip
@@ -121,7 +85,6 @@ void Task_UI(void* pvParameters) {
 
         if (btnEvent != EVENT_NONE) {
             displayMgr.wakeScreen();
-            beepChirp(20);
         }
 
         // 2. Handle Button Actions
@@ -152,7 +115,6 @@ void Task_UI(void* pvParameters) {
             // Red button held for 3 seconds: INSTANT EMERGENCY SOS OVERRIDE!
             Serial.println("[TX] !!! PANIC OVERRIDE TRIGGERED !!!");
             displayMgr.triggerSendingNotice();
-            soundAlarmPattern();
 
             GPSLocation loc;
             if (xSemaphoreTake(gpsMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
@@ -190,12 +152,6 @@ void setup() {
     Serial.printf("  ESP32-LoRa Emergency Spotter (Node 0x%02X)\n", CURRENT_NODE_ID);
     Serial.println("==============================================");
 
-    // Initialize optional buzzer
-    #if defined(BUZZER_PIN)
-    pinMode(BUZZER_PIN, OUTPUT);
-    digitalWrite(BUZZER_PIN, LOW);
-    #endif
-
     // Initialize Mutex
     gpsMutex = xSemaphoreCreateMutex();
 
@@ -209,8 +165,6 @@ void setup() {
     } else {
         Serial.println("[OK] LoRa radio active on 433 MHz.");
     }
-
-    beepChirp(100);
 
     // Spawn FreeRTOS Tasks pinned to specific cores
     xTaskCreatePinnedToCore(

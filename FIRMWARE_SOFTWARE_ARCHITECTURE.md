@@ -34,7 +34,6 @@ The system consists of two or more identical, autonomous handheld field communic
 | | | **GPIO 21** | I2C (SDA) | |
 | **SOS / Action Button** | Tactile Switch | **GPIO 32** | Digital Input | Internal `INPUT_PULLUP` to GND |
 | **NAV / Menu Button** | Tactile Switch | **GPIO 33** | Digital Input | Internal `INPUT_PULLUP` to GND |
-| **Alert Buzzer / LED** | Active Buzzer | **GPIO 27** | Digital Output | Audio alarm on SOS reception |
 
 ---
 

@@ -39,9 +39,6 @@
 #define BTN_SOS_PIN           32        // Red Button: Action / Instant SOS
 #define BTN_NAV_PIN           33        // Black Button: Navigation / Carousel
 
-// Audible Alert (Optional Buzzer / LED)
-#define BUZZER_PIN            27        // Alarm buzzer output
-
 // ==============================================================================
 // RADIO CONFIGURATION (SX1278 / 433 MHz ISM Band)
 // ==============================================================================

@@ -37,7 +37,6 @@ Operating entirely without the internet, cellular towers, or mobile apps, two or
 | **GPS Module** | u-blox NEO-6M with ceramic patch antenna | 1 |
 | **Display** | 0.96" SSD1306 I2C OLED (128×64) | 1 |
 | **Input Buttons** | 2× Tactile Push Buttons (Red = SOS, Black = NAV) | 2 |
-| **Buzzer** | 5V Active Buzzer (Optional alarm) | 1 |
 | **Substrate** | Single-sided Zero-PCB (Perfboard) + Female headers | 1 |
 | **Power** | 3.7V 18650 Li-ion battery or 5V Powerbank | 1 |
 
@@ -59,7 +58,6 @@ Operating entirely without the internet, cellular towers, or mobile apps, two or
 | | SDA | **GPIO 21** | I2C | Data |
 | **Red Button (SOS)** | Pin 1 -> Pin 2 | **GPIO 32** -> GND | GPIO Input | Internal `INPUT_PULLUP` |
 | **Black Button (NAV)**| Pin 1 -> Pin 2 | **GPIO 33** -> GND | GPIO Input | Internal `INPUT_PULLUP` |
-| **Alarm Buzzer** | Positive (+) | **GPIO 27** | GPIO Output | Active High |
 
 ---
 
@@ -71,7 +69,6 @@ Operating entirely without the internet, cellular towers, or mobile apps, two or
 | **NEO-6M GPS** | **3.3V or 5V** | **`VIN` (5V)** or **`3.3V`** | ~50 mA | Safe on 5V because of onboard 3.3V regulator. Using `VIN` unloads the 3.3V rail. |
 | **0.96" SSD1306 OLED** | **3.3V or 5V** | **`3.3V`** | ~20 mA | Safe on 3.3V or 5V. |
 | **Tactile Push Buttons** | **No Power Rail** | **`GPIO` to `GND`** | < 1 mA | Uses internal `INPUT_PULLUP`. Do NOT connect external voltage to buttons. |
-| **Active Buzzer** | **3.3V Logic** | **`GPIO 27` to `GND`** | ~15 mA | Driven directly from GPIO 27. |
 
 > **Pro-Tip:** Solder a **100 µF capacitor** across the LoRa module's `3.3V` and `GND` pins to buffer the 120 mA current spikes during +20 dBm RF transmission.
 
