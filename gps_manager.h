@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 #include <Arduino.h>
 #include <TinyGPS++.h>
 #include "config.h"

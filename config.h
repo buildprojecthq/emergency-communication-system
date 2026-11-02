@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+#include <stddef.h>
 #include <Arduino.h>
 
 // ==============================================================================
@@ -69,10 +71,10 @@ struct EmergencyPreset {
     const char* description;
 };
 
-const EmergencyPreset EMERGENCY_PRESETS[] = {
+static const EmergencyPreset EMERGENCY_PRESETS[] = {
     { 0x01, "CRITICAL SOS",  "Medical / Trapped" },
     { 0x02, "NEED SUPPLIES", "Food & Clean Water" },
     { 0x03, "EVACUATING",    "Moving to Safe Zone" },
     { 0x04, "ALL SAFE",      "Team OK / Standing By" }
 };
-const uint8_t PRESET_COUNT = sizeof(EMERGENCY_PRESETS) / sizeof(EmergencyPreset);
+static const uint8_t PRESET_COUNT = (uint8_t)(sizeof(EMERGENCY_PRESETS) / sizeof(EMERGENCY_PRESETS[0]));
