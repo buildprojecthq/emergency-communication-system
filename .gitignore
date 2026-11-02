@@ -1,0 +1,22 @@
+# PlatformIO build artifacts
+.pio/
+.pioenvs/
+.piolibdeps/
+.clangd/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Arduino temporary files
+*.hex
+*.bin
+*.elf
+build/
