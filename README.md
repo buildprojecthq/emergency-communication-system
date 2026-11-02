@@ -63,6 +63,20 @@ Operating entirely without the internet, cellular towers, or mobile apps, two or
 
 ---
 
+## Power Supply & Voltage Distribution Guide
+
+| Module / Component | Supply Voltage | Connect to ESP32 Pin | Current Draw | Critical Warning |
+| :--- | :--- | :--- | :--- | :--- |
+| **SX1278 LoRa (Ra-02)** | **STRICTLY 3.3V** | **`3.3V`** | ~120 mA (Peak TX) | ⚠️ **DO NOT connect to 5V!** Voltage >3.7V will permanently destroy the SX1278 chip. |
+| **NEO-6M GPS** | **3.3V or 5V** | **`VIN` (5V)** or **`3.3V`** | ~50 mA | Safe on 5V because of onboard 3.3V regulator. Using `VIN` unloads the 3.3V rail. |
+| **0.96" SSD1306 OLED** | **3.3V or 5V** | **`3.3V`** | ~20 mA | Safe on 3.3V or 5V. |
+| **Tactile Push Buttons** | **No Power Rail** | **`GPIO` to `GND`** | < 1 mA | Uses internal `INPUT_PULLUP`. Do NOT connect external voltage to buttons. |
+| **Active Buzzer** | **3.3V Logic** | **`GPIO 27` to `GND`** | ~15 mA | Driven directly from GPIO 27. |
+
+> **Pro-Tip:** Solder a **100 µF capacitor** across the LoRa module's `3.3V` and `GND` pins to buffer the 120 mA current spikes during +20 dBm RF transmission.
+
+---
+
 ## Project File Structure
 
 ```
