@@ -77,18 +77,23 @@ Operating entirely without the internet, cellular towers, or mobile apps, two or
 ## Project File Structure
 
 ```
-lora-spotter/
-├── config.h               # Pinouts, RF settings, Node ID toggle, timings
-├── packet_protocol.h      # 24-byte compact binary packet & CRC16 checksum
-├── button_manager.h/.cpp  # 2-button debouncer (single click vs 3s panic hold)
-├── gps_manager.h/.cpp     # GPS NMEA parsing & Haversine distance/azimuth math
-├── radio_manager.h/.cpp   # SX1278 LoRa driver, DIO0 interrupt & ACK handling
-├── display_manager.h/.cpp # 3-screen OLED renderer (Home, Menu, Radar, Popups)
-├── lora_spotter.ino       # Main FreeRTOS dual-core task orchestration sketch
-├── platformio.ini         # PlatformIO project configuration with dependencies
-├── .gitignore             # Git exclusions
-├── LICENSE                # MIT License
-└── README.md              # Project documentation
+emergency-communication-system/
+├── firmware/                      # All embedded C++ source & header files
+│   ├── lora_spotter.ino           # Main FreeRTOS dual-core task orchestration sketch
+│   ├── config.h                   # Pinouts, RF settings, Node ID toggle, timings
+│   ├── packet_protocol.h          # 24-byte compact binary packet & CRC16 checksum
+│   ├── button_manager.h/.cpp      # 2-button debouncer (single click vs 3s panic hold)
+│   ├── gps_manager.h/.cpp         # GPS NMEA parsing & Haversine distance/azimuth math
+│   ├── radio_manager.h/.cpp       # SX1278 LoRa driver, DIO0 interrupt & ACK handling
+│   └── display_manager.h/.cpp     # 3-screen OLED renderer (Home, Menu, Radar, Popups)
+├── docs/                          # Architecture & design documentation
+│   ├── FIRMWARE_SOFTWARE_ARCHITECTURE.md
+│   └── IMPLEMENTATION_PLAN.md
+├── hardware/                      # Schematics and circuit design notes
+├── platformio.ini                 # PlatformIO project configuration (src_dir = firmware)
+├── .gitignore                     # Git exclusions
+├── LICENSE                        # MIT License
+└── README.md                      # Project documentation
 ```
 
 ---
@@ -96,7 +101,7 @@ lora-spotter/
 ## Flashing Instructions
 
 ### 1. Setting Node IDs
-Before uploading, set the unique identity for each device in `config.h`:
+Before uploading, set the unique identity for each device in `firmware/config.h`:
 * **For Spotter 1:**
   ```cpp
   #define CURRENT_NODE_ID 0x01
@@ -117,12 +122,12 @@ Before uploading, set the unique identity for each device in `config.h`:
    * **`Adafruit GFX Library`** (by Adafruit)
 3. Select Board: **Tools** -> **Board** -> **ESP32 Arduino** -> **DOIT ESP32 DEVKIT V1**.
 4. Select your COM / Serial port.
-5. Open `lora_spotter.ino` and click **Upload**.
+5. Open `firmware/lora_spotter.ino` and click **Upload**.
 
 ---
 
 ### 3. Uploading via PlatformIO (VS Code)
-1. Open the `lora-spotter` folder in VS Code with the PlatformIO extension.
+1. Open the repository root folder in VS Code with the PlatformIO extension.
 2. PlatformIO will automatically download all required libraries listed in `platformio.ini`.
 3. Connect your ESP32 via USB and click **PlatformIO: Upload**.
 
