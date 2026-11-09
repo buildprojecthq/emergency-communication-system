@@ -24,10 +24,26 @@ RadioManager::RadioManager()
       _ackRssi(0.0) {}
 
 bool RadioManager::begin() {
-    // Initialize standard ESP32 SPI pins for LoRa
-    SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
+    // 1. Initialize standard ESP32 SPI pins (without locking NSS in hardware SPI controller)
+    SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI);
+    pinMode(LORA_NSS, OUTPUT);
+    digitalWrite(LORA_NSS, HIGH);
 
-    // Initialize RadioLib SX1278
+    // 2. Explicit Hardware Reset pulse on SX1278
+    pinMode(LORA_RST, OUTPUT);
+    digitalWrite(LORA_RST, LOW);
+    delay(10);
+    digitalWrite(LORA_RST, HIGH);
+    delay(20);
+
+    // 3. Raw SPI sanity check: Read SX1278 RegVersion (0x42)
+    digitalWrite(LORA_NSS, LOW);
+    SPI.transfer(0x42 & 0x7F); // Read address 0x42
+    uint8_t rawVersion = SPI.transfer(0x00);
+    digitalWrite(LORA_NSS, HIGH);
+    Serial.printf("[LORA SPI CHECK] Raw SX1278 RegVersion = 0x%02X (Expected: 0x12)\n", rawVersion);
+
+    // 4. Initialize RadioLib SX1278
     int state = _radio.begin(
         LORA_FREQUENCY,
         LORA_BANDWIDTH,
@@ -68,10 +84,18 @@ bool RadioManager::transmitRaw(SpotterPacket& pkt) {
     // Immediately resume listening for incoming packets & ACKs
     _radio.startReceive();
 
-    return (state == RADIOLIB_ERR_NONE);
+    if (state != RADIOLIB_ERR_NONE) {
+        Serial.printf("[LORA TX ERROR] Transmit failed with error code: %d\n", state);
+        return false;
+    }
+
+    Serial.printf("[LORA TX OK] Packet #%d sent over the air!\n", pkt.seq_num);
+    return true;
 }
 
 bool RadioManager::sendBroadcastSOS(int32_t lat, int32_t lon, int16_t alt, uint8_t sats, uint8_t bat) {
+    _radio.setOutputPower(LORA_OUTPUT_POWER_PANIC); // Max power +20 dBm for critical emergency
+
     SpotterPacket pkt;
     pkt.src_node    = CURRENT_NODE_ID;
     pkt.dst_node    = BROADCAST_NODE_ID; // Broadcast to ALL nodes
@@ -93,6 +117,8 @@ bool RadioManager::sendBroadcastSOS(int32_t lat, int32_t lon, int16_t alt, uint8
 }
 
 bool RadioManager::sendPresetMessage(uint8_t presetIndex, int32_t lat, int32_t lon, int16_t alt, uint8_t sats, uint8_t bat) {
+    _radio.setOutputPower(LORA_OUTPUT_POWER_PRESET); // Low power +14 dBm for routine updates (prevents brownout)
+
     SpotterPacket pkt;
     pkt.src_node    = CURRENT_NODE_ID;
     pkt.dst_node    = BROADCAST_NODE_ID;
@@ -114,6 +140,8 @@ bool RadioManager::sendPresetMessage(uint8_t presetIndex, int32_t lat, int32_t l
 }
 
 bool RadioManager::sendAck(uint8_t targetNode, uint8_t seqNum) {
+    _radio.setOutputPower(LORA_OUTPUT_POWER_PRESET); // Low power +14 dBm for acknowledgment
+
     SpotterPacket ack;
     ack.src_node    = CURRENT_NODE_ID;
     ack.dst_node    = targetNode;
@@ -138,7 +166,7 @@ bool RadioManager::checkReceived(ReceivedMessage& outMsg) {
     SpotterPacket tempPkt;
     size_t len = _radio.getPacketLength();
     if (len != SPOTTER_PACKET_SIZE) {
-        // Not our packet size, discard and resume listening
+        // Discard RF noise / non-Spotter packets silently without serial flooding
         _radio.startReceive();
         return false;
     }
@@ -147,11 +175,12 @@ bool RadioManager::checkReceived(ReceivedMessage& outMsg) {
     _radio.startReceive(); // Return to listening mode immediately
 
     if (state != RADIOLIB_ERR_NONE || !validatePacket(tempPkt)) {
-        return false; // Checksum or magic failed
+        return false; // Checksum or magic failed (atmospheric noise)
     }
 
     // Ignore packets transmitted by ourselves
     if (tempPkt.src_node == CURRENT_NODE_ID) {
+        Serial.printf("[LORA RX IGNORE] Dropped echo packet from OURSELVES (Node 0x%02X)\n", CURRENT_NODE_ID);
         return false;
     }
 

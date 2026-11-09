@@ -8,6 +8,9 @@
  */
 
 #include <Arduino.h>
+#include <WiFi.h>
+#include <esp_bt.h>
+#include <esp_sleep.h>
 #include "config.h"
 #include "packet_protocol.h"
 #include "button_manager.h"
@@ -68,6 +71,20 @@ void Task_RadioGPS(void* pvParameters) {
             displayMgr.triggerAckPopup(ackNode, ackRssi);
         }
 
+        // 5. Periodic GPS Diagnostics to Serial Monitor (every 3 seconds)
+        static uint32_t lastGpsLog = 0;
+        if (millis() - lastGpsLog >= 3000) {
+            lastGpsLog = millis();
+            Serial.printf("[GPS DIAG] Chars: %u | Fix: %s | Sats: %u | Lat: %.5f | Lon: %.5f | Alt: %dm | CksumErr: %u\n",
+                          gpsMgr.getCharsProcessed(),
+                          gpsMgr.hasFix() ? "YES" : "NO",
+                          gpsMgr.getSatellites(),
+                          gpsMgr.getLatitude(),
+                          gpsMgr.getLongitude(),
+                          gpsMgr.getAltitude(),
+                          gpsMgr.getFailedChecksum());
+        }
+
         // Yield CPU briefly to prevent watchdog trip
         vTaskDelay(pdMS_TO_TICKS(15));
     }
@@ -80,7 +97,23 @@ void Task_UI(void* pvParameters) {
     Serial.println("[CORE 1] UI & Button Task Started");
 
     for (;;) {
-        // 1. Poll the 2 tactile push buttons
+        // Raw pin transition check (immediate hardware sanity check)
+        static bool lastRawNav = HIGH;
+        static bool lastRawSos = HIGH;
+        bool rawNav = digitalRead(BTN_NAV_PIN);
+        bool rawSos = digitalRead(BTN_SOS_PIN);
+        if (rawNav != lastRawNav) {
+            lastRawNav = rawNav;
+            Serial.printf("[RAW PIN] NAV (GPIO %d) -> %s\n",
+                          BTN_NAV_PIN, rawNav == LOW ? "LOW (Pressed)" : "HIGH (Released)");
+        }
+        if (rawSos != lastRawSos) {
+            lastRawSos = rawSos;
+            Serial.printf("[RAW PIN] SOS (GPIO %d) -> %s\n",
+                          BTN_SOS_PIN, rawSos == LOW ? "LOW (Pressed)" : "HIGH (Released)");
+        }
+
+        // 1. Poll the 2 tactile push buttons via debouncer
         ButtonEvent btnEvent = buttonMgr.update();
 
         if (btnEvent != EVENT_NONE) {
@@ -89,14 +122,14 @@ void Task_UI(void* pvParameters) {
 
         // 2. Handle Button Actions
         if (btnEvent == EVENT_NAV_CLICK) {
-            // Black button: Advance through screens / messages
+            Serial.println("[BUTTON] >>> NAV CLICK DETECTED! Advancing screen / menu item <<<");
             displayMgr.nextScreen();
         } 
         else if (btnEvent == EVENT_SOS_CLICK) {
-            // Red button single click: If on Menu, transmit highlighted message
+            Serial.println("[BUTTON] >>> SOS CLICK DETECTED! <<<");
             if (displayMgr.getScreenMode() == SCREEN_MENU) {
                 uint8_t activeCode = displayMgr.getActivePresetIndex();
-                displayMgr.triggerSendingNotice();
+                displayMgr.triggerTxNotice("TRANSMITTING...", EMERGENCY_PRESETS[activeCode - 1].label);
 
                 GPSLocation loc;
                 if (xSemaphoreTake(gpsMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
@@ -108,13 +141,12 @@ void Task_UI(void* pvParameters) {
                 int32_t lonScaled = (int32_t)(loc.longitude * 1000000.0);
 
                 Serial.printf("[TX] Broadcasting Preset #%d to ALL nodes\n", activeCode);
-                radioMgr.sendPresetMessage(activeCode, latScaled, lonScaled, loc.altitude, loc.satellites, 95);
+                radioMgr.sendPresetMessage(activeCode, latScaled, lonScaled, loc.altitude, loc.satellites, 0);
             }
         } 
         else if (btnEvent == EVENT_PANIC_HOLD) {
-            // Red button held for 3 seconds: INSTANT EMERGENCY SOS OVERRIDE!
-            Serial.println("[TX] !!! PANIC OVERRIDE TRIGGERED !!!");
-            displayMgr.triggerSendingNotice();
+            Serial.println("[BUTTON] >>> !!! PANIC HOLD (3s) DETECTED! Broadcasting SOS! !!! <<<");
+            displayMgr.triggerTxNotice("! EMERGENCY SOS !", "Distress Beacon Sent");
 
             GPSLocation loc;
             if (xSemaphoreTake(gpsMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
@@ -125,20 +157,25 @@ void Task_UI(void* pvParameters) {
             int32_t latScaled = (int32_t)(loc.latitude * 1000000.0);
             int32_t lonScaled = (int32_t)(loc.longitude * 1000000.0);
 
-            // Broadcast priority SOS at maximum +20 dBm LoRa power
-            radioMgr.sendBroadcastSOS(latScaled, lonScaled, loc.altitude, loc.satellites, 95);
+            // Broadcast priority SOS at maximum LoRa power
+            radioMgr.sendBroadcastSOS(latScaled, lonScaled, loc.altitude, loc.satellites, 0);
         }
 
-        // 3. Render OLED Display at ~15 FPS
+        // 3. Render OLED Display (Minimalist, No Battery %)
         GPSLocation currentLoc;
         if (xSemaphoreTake(gpsMutex, pdMS_TO_TICKS(20)) == pdTRUE) {
             currentLoc = sharedGpsLocation;
             xSemaphoreGive(gpsMutex);
         }
 
-        displayMgr.update(currentLoc, 95); // Estimated battery 95%
+        displayMgr.update(currentLoc);
 
-        vTaskDelay(pdMS_TO_TICKS(65)); // ~15 FPS refresh rate
+        // Dynamic task rate: slower polling when display is sleeping to save power
+        if (displayMgr.isScreenAsleep()) {
+            vTaskDelay(pdMS_TO_TICKS(150));
+        } else {
+            vTaskDelay(pdMS_TO_TICKS(65)); // ~15 FPS refresh rate when screen active
+        }
     }
 }
 
@@ -146,10 +183,26 @@ void Task_UI(void* pvParameters) {
 // ARDUINO SETUP
 // ==============================================================================
 void setup() {
+    // --------------------------------------------------------------------------
+    // POWER OPTIMIZATION: Downclock CPU & Disable Unused Radios
+    // --------------------------------------------------------------------------
+    // 1. Lower CPU from 240 MHz to 80 MHz (Saves ~50 mA, eliminates brownouts)
+    setCpuFrequencyMhz(80);
+
+    // 2. Shut down Wi-Fi and Bluetooth baseband radios completely (Saves ~20 mA)
+    WiFi.mode(WIFI_OFF);
+    btStop();
+
+    // 3. Configure Wakeup Pins for Light Sleep
+    // Wake on LoRa DIO0 (GPIO 2 HIGH = incoming packet ready)
+    esp_sleep_enable_ext0_wakeup((gpio_num_t)LORA_DIO0, 1);
+    // Wake on Buttons (Active LOW)
+    esp_sleep_enable_ext1_wakeup(((1ULL << BTN_NAV_PIN) | (1ULL << BTN_SOS_PIN)), ESP_EXT1_WAKEUP_ALL_LOW);
+
     Serial.begin(115200);
-    delay(500);
+    delay(300);
     Serial.println("\n==============================================");
-    Serial.printf("  ESP32-LoRa Emergency Spotter (Node 0x%02X)\n", CURRENT_NODE_ID);
+    Serial.printf("  ESP32-LoRa Emergency Spotter (Node 0x%02X) [80MHz Low-Power]\n", CURRENT_NODE_ID);
     Serial.println("==============================================");
 
     // Initialize Mutex
@@ -157,6 +210,10 @@ void setup() {
 
     // Initialize all hardware peripherals
     buttonMgr.begin();
+    Serial.printf("[BUTTON PIN CHECK] NAV (GPIO %d) = %s | SOS (GPIO %d) = %s\n",
+                  BTN_NAV_PIN, digitalRead(BTN_NAV_PIN) == LOW ? "LOW (Pressed/Shorted!)" : "HIGH (Normal Released)",
+                  BTN_SOS_PIN, digitalRead(BTN_SOS_PIN) == LOW ? "LOW (Pressed/Shorted!)" : "HIGH (Normal Released)");
+
     displayMgr.begin();
     gpsMgr.begin();
 

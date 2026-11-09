@@ -14,7 +14,8 @@ enum ScreenMode {
     SCREEN_MENU,
     SCREEN_RADAR,
     SCREEN_ALERT_POPUP,
-    SCREEN_ACK_POPUP
+    SCREEN_ACK_POPUP,
+    SCREEN_TX_POPUP
 };
 
 class DisplayManager {
@@ -22,7 +23,7 @@ public:
     DisplayManager();
     bool begin();
     
-    void update(const GPSLocation& localGps, uint8_t batteryPct);
+    void update(const GPSLocation& localGps);
     
     // Screen navigation
     void nextScreen();
@@ -34,6 +35,7 @@ public:
     void triggerAlertPopup(uint8_t srcNode, uint8_t presetCode, double lat, double lon, float rssi);
     void triggerAckPopup(uint8_t ackNode, float rssi);
     void triggerSendingNotice();
+    void triggerTxNotice(const char* title, const char* message);
     void dismissPopup();
 
     // Power management
@@ -71,9 +73,14 @@ private:
     double           _radarTargetLat;
     double           _radarTargetLon;
 
-    void renderHomeScreen(const GPSLocation& localGps, uint8_t batteryPct);
+    // Transmission notice
+    const char*      _txNoticeTitle;
+    const char*      _txNoticeMsg;
+
+    void renderHomeScreen(const GPSLocation& localGps);
     void renderMenuScreen();
     void renderRadarScreen(const GPSLocation& localGps);
     void renderAlertPopup();
     void renderAckPopup();
+    void renderTxPopup();
 };

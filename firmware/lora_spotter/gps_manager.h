@@ -28,6 +28,11 @@ public:
     int16_t getAltitude();
     uint8_t getSatellites();
 
+    // Diagnostics
+    uint32_t getCharsProcessed() { return _gps.charsProcessed(); }
+    uint32_t getFailedChecksum() { return _gps.failedChecksum(); }
+    uint32_t getSentencesWithFix() { return _gps.sentencesWithFix(); }
+
     // Rescue Radar Mathematics
     static double calculateDistanceMeters(double lat1, double lon1, double lat2, double lon2);
     static double calculateBearingDegrees(double lat1, double lon1, double lat2, double lon2);
