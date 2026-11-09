@@ -52,8 +52,8 @@ Operating entirely without the internet, cellular towers, or mobile apps, two or
 | | MOSI | **GPIO 23** | SPI | Master Out |
 | | DIO0 | **GPIO 2** | Interrupt | Packet Received IRQ |
 | | RST | **GPIO 14** | Reset | Active Low Reset |
-| **GPS (NEO-6M)** | TX | **GPIO 4** | UART2 (RX) | ESP32 RX <- GPS TX (9600 baud) |
-| | RX | **GPIO 15** | UART2 (TX) | ESP32 TX -> GPS RX |
+| **GPS (NEO-6M)** | TX | **GPIO 15** (Spotter 1) / **GPIO 4** (Spotter 2) | UART2 (RX) | ESP32 RX <- GPS TX (9600 baud) |
+| | RX | **GPIO 4** (Spotter 1) / **GPIO 15** (Spotter 2) | UART2 (TX) | ESP32 TX -> GPS RX |
 | **OLED (SSD1306)** | SCL | **GPIO 22** | I2C | Clock (400 kHz) |
 | | SDA | **GPIO 21** | I2C | Data |
 | **Red Button (SOS)** | Pin 1 -> Pin 2 | **GPIO 32** -> GND | GPIO Input | Internal `INPUT_PULLUP` |
@@ -65,12 +65,33 @@ Operating entirely without the internet, cellular towers, or mobile apps, two or
 
 | Module / Component | Supply Voltage | Connect to ESP32 Pin | Current Draw | Critical Warning |
 | :--- | :--- | :--- | :--- | :--- |
-| **SX1278 LoRa (Ra-02)** | **STRICTLY 3.3V** | **`3.3V`** | ~120 mA (Peak TX) | ⚠️ **DO NOT connect to 5V!** Voltage >3.7V will permanently destroy the SX1278 chip. |
+| **SX1278 LoRa (Ra-02)** | **STRICTLY 3.3V** | **`3.3V`** | ~65–140 mA (TX) | ⚠️ **DO NOT connect to 5V!** Voltage >3.7V will permanently destroy the SX1278 chip. |
 | **NEO-6M GPS** | **3.3V or 5V** | **`VIN` (5V)** or **`3.3V`** | ~50 mA | Safe on 5V because of onboard 3.3V regulator. Using `VIN` unloads the 3.3V rail. |
-| **0.96" SSD1306 OLED** | **3.3V or 5V** | **`3.3V`** | ~20 mA | Safe on 3.3V or 5V. |
+| **0.96" SSD1306 OLED** | **3.3V or 5V** | **`3.3V`** | ~6–8 mA (Minimal UI) | Low-contrast minimal UI draws <8 mA, preventing 3.3V rail brownouts. |
 | **Tactile Push Buttons** | **No Power Rail** | **`GPIO` to `GND`** | < 1 mA | Uses internal `INPUT_PULLUP`. Do NOT connect external voltage to buttons. |
 
-> **Pro-Tip:** Solder a **100 µF capacitor** across the LoRa module's `3.3V` and `GND` pins to buffer the 120 mA current spikes during +20 dBm RF transmission.
+> [!TIP]
+> **Power Optimizations Applied:**
+> * **80 MHz CPU Downclocking:** Reduces ESP32 idle/active consumption from ~75 mA to ~28 mA.
+> * **Wi-Fi & Bluetooth Baseband Shutdown:** Unused 2.4 GHz RF sections are completely powered down on boot (`WiFi.mode(WIFI_OFF); btStop();`).
+> * **Dynamic RF Power:** Routine messages transmit at +14 dBm (~65 mA) to prevent USB/battery brownouts, while 3-second Panic SOS overrides blast at maximum +20 dBm (100 mW).
+> * Solder a **100 µF capacitor** across the LoRa module's `3.3V` and `GND` pins to buffer peak RF transmission current spikes.
+
+---
+
+## Hardware & Field Operation Gallery
+
+Below are the physical builds and live operation screens of the ESP32-LoRa Emergency Spotter:
+
+| 1. Assembled Hardware (Front View) | 2. OLED Emergency Menu |
+| :---: | :---: |
+| ![Spotter Hardware Front](hardware/photos/hardware_front.jpg) | ![Emergency Menu](hardware/photos/menu_options.jpg) |
+| *Standalone Handheld Communicator with LoRa, GPS & OLED* | *Scrollable Triage Presets (Medical, Supplies, Evac, Safe)* |
+
+| 3. Transmitting & Receiving (Two-Way Mesh) | 4. SOS Rescue Radar & Direction Finder |
+| :---: | :---: |
+| ![Transmitting and Receiving](hardware/photos/transmitting_receiving.jpg) | ![Rescue Radar Direction](hardware/photos/rescue_radar_direction.jpg) |
+| *Zero-Internet Distress Beacon & Return Delivery Receipt (ACK)* | *Live Haversine Distance in Meters & Azimuth Compass Arrow* |
 
 ---
 
@@ -78,19 +99,21 @@ Operating entirely without the internet, cellular towers, or mobile apps, two or
 
 ```
 emergency-communication-system/
-├── firmware/                      # All embedded C++ source & header files
-│   ├── lora_spotter.ino           # Main FreeRTOS dual-core task orchestration sketch
-│   ├── config.h                   # Pinouts, RF settings, Node ID toggle, timings
-│   ├── packet_protocol.h          # 24-byte compact binary packet & CRC16 checksum
-│   ├── button_manager.h/.cpp      # 2-button debouncer (single click vs 3s panic hold)
-│   ├── gps_manager.h/.cpp         # GPS NMEA parsing & Haversine distance/azimuth math
-│   ├── radio_manager.h/.cpp       # SX1278 LoRa driver, DIO0 interrupt & ACK handling
-│   └── display_manager.h/.cpp     # 3-screen OLED renderer (Home, Menu, Radar, Popups)
+├── firmware/
+│   └── lora_spotter/             # Embedded C++ source & header files (Arduino IDE & PlatformIO)
+│       ├── lora_spotter.ino       # Main FreeRTOS dual-core task orchestration sketch
+│       ├── config.h               # Pinouts, RF settings, Node ID toggle, timings
+│       ├── packet_protocol.h      # Compact binary packet & CRC16 CCITT checksum
+│       ├── button_manager.h/.cpp  # 2-button debouncer (single click vs 3s panic hold)
+│       ├── gps_manager.h/.cpp     # GPS NMEA parsing & Haversine distance/azimuth math
+│       ├── radio_manager.h/.cpp   # SX1278 LoRa driver, DIO0 interrupt & ACK handling
+│       └── display_manager.h/.cpp # Minimalist OLED renderer (Home, Menu, Radar, Popups)
 ├── docs/                          # Architecture & design documentation
 │   ├── FIRMWARE_SOFTWARE_ARCHITECTURE.md
 │   └── IMPLEMENTATION_PLAN.md
 ├── hardware/                      # Schematics and circuit design notes
-├── platformio.ini                 # PlatformIO project configuration (src_dir = firmware)
+│   └── photos/                    # Real hardware build & field operation photos
+├── platformio.ini                 # PlatformIO project configuration (src_dir = firmware/lora_spotter)
 ├── .gitignore                     # Git exclusions
 ├── LICENSE                        # MIT License
 └── README.md                      # Project documentation
@@ -100,15 +123,19 @@ emergency-communication-system/
 
 ## Flashing Instructions
 
-### 1. Setting Node IDs
-Before uploading, set the unique identity for each device in `firmware/config.h`:
+### 1. Setting Node IDs & GPS Pins
+Before uploading, set the unique identity and GPS wiring in `firmware/lora_spotter/config.h`:
 * **For Spotter 1:**
   ```cpp
   #define CURRENT_NODE_ID 0x01
+  #define GPS_RX_PIN 15
+  #define GPS_TX_PIN 4
   ```
 * **For Spotter 2:**
   ```cpp
   #define CURRENT_NODE_ID 0x02
+  #define GPS_RX_PIN 4
+  #define GPS_TX_PIN 15
   ```
 
 ---
@@ -122,7 +149,7 @@ Before uploading, set the unique identity for each device in `firmware/config.h`
    * **`Adafruit GFX Library`** (by Adafruit)
 3. Select Board: **Tools** -> **Board** -> **ESP32 Arduino** -> **DOIT ESP32 DEVKIT V1**.
 4. Select your COM / Serial port.
-5. Open `firmware/lora_spotter.ino` and click **Upload**.
+5. Open `firmware/lora_spotter/lora_spotter.ino` and click **Upload**.
 
 ---
 
@@ -138,9 +165,10 @@ Before uploading, set the unique identity for each device in `firmware/config.h`
 ```
 +───────────────────────+   [BLACK BUTTON]   +───────────────────────+
 |     1. HOME SCREEN    | -----------------> |  2. EMERGENCY MENU    |
-| Lat: 12.9234 Lon: 77.5|                    | > [1] MEDICAL CRISIS  |
-| Sats: 8   |  Bat: 95% | <----------------- |   [2] NEED SUPPLIES   |
-+───────────────────────+    (wraps around)  +───────────────────────+
+| SPOTTER 1     SATS: 8 |                    | > [1] CRITICAL SOS    |
+| LAT: 12.9234 LON: 77.5| <----------------- |   [2] NEED SUPPLIES   |
+| ALT: 915m             |    (wraps around)  +───────────────────────+
++───────────────────────+                                |
            ^                                             |
            |              [BLACK BUTTON]                 |
            +---------------------------------------------+
@@ -148,7 +176,7 @@ Before uploading, set the unique identity for each device in `firmware/config.h`
                                    v
                       +───────────────────────+
                       |   3. RESCUE RADAR     |
-                      | Target: SPOTTER 1     |
+                      | Target: SPOTTER 2     |
                       | Distance: 350 METERS  |
                       | Direction: NORTHEAST ↗|
                       +───────────────────────+
