@@ -83,15 +83,15 @@ Operating entirely without the internet, cellular towers, or mobile apps, two or
 
 Below are the physical builds and live operation screens of the ESP32-LoRa Emergency Spotter:
 
-| 1. Assembled Hardware (Front View) | 2. OLED Emergency Menu |
-| :---: | :---: |
-| ![Spotter Hardware Front](hardware/photos/hardware_front.jpg) | ![Emergency Menu](hardware/photos/menu_options.jpg) |
-| *Standalone Handheld Communicator with LoRa, GPS & OLED* | *Scrollable Triage Presets (Medical, Supplies, Evac, Safe)* |
+| 1. Assembled Hardware (Front View) |
+| :---: |
+| ![Spotter Hardware Front](hardware/photos/hardware_front.jpg) |
+| *Dual Standalone Handheld Communicators with ESP32, SX1278 LoRa, NEO-6M GPS & 0.96" OLED* |
 
-| 3. Transmitting & Receiving (Two-Way Mesh) | 4. SOS Rescue Radar & Direction Finder |
+| 2. OLED Emergency Menu | 3. Transmitting & Receiving (Two-Way Mesh) |
 | :---: | :---: |
-| ![Transmitting and Receiving](hardware/photos/transmitting_receiving.jpg) | ![Rescue Radar Direction](hardware/photos/rescue_radar_direction.jpg) |
-| *Zero-Internet Distress Beacon & Return Delivery Receipt (ACK)* | *Live Haversine Distance in Meters & Azimuth Compass Arrow* |
+| ![Emergency Menu](hardware/photos/menu_options.jpg) | ![Transmitting and Receiving](hardware/photos/transmitting_receiving.jpg) |
+| *Scrollable Triage Presets (Critical SOS, Supplies, Evac, Safe)* | *Two-Way LoRa Verification: Spotter 1 ACK receipt & Spotter 2 incoming alert (-46 dBm)* |
 
 ---
 
