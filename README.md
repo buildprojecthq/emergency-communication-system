@@ -4,7 +4,7 @@
 [![Framework: Arduino](https://img.shields.io/badge/Framework-Arduino-blue.svg)](https://www.arduino.cc/)
 [![Platform: ESP32](https://img.shields.io/badge/Platform-ESP32-red.svg)](https://www.espressif.com/)
 [![LoRa: SX1278](https://img.shields.io/badge/LoRa-SX1278%20433MHz-brightgreen.svg)](https://www.semtech.com/)
-[![Project Showcase](https://img.shields.io/badge/Showcase-buildproject.in-2563EB)](https://buildproject.in/projects/emergency-communication-system/)
+[![Project Showcase](https://img.shields.io/badge/Built%20by-buildproject.in-2563EB)](https://buildproject.in/projects/emergency-communication-system/)
 
 A **100% off-grid, standalone handheld emergency communicator** designed for natural disaster zones, remote search-and-rescue, and cellular infrastructure blackouts. 
 
@@ -189,8 +189,12 @@ Before uploading, set the unique identity and GPS wiring in `firmware/lora_spott
 
 ---
 
-> 💡 **Project Showcase & Hardware Documentation:**  
-> SX1278 wiring pinouts, FreeRTOS dual-core task breakdown, disaster mesh field notes, and examiner viva defense Q&As are available on **[buildproject.in/projects/emergency-communication-system](https://buildproject.in/projects/emergency-communication-system/)**.
+### 🚀 Built by [buildproject.in](https://buildproject.in/)
+
+This project was designed, built, and field-tested by **[buildproject.in](https://buildproject.in/)**. Explore the live showcase, SX1278 LoRa schematics, and viva notes on the **[official project page](https://buildproject.in/projects/emergency-communication-system/)**.
+
+**P.S.** Looking for a custom engineering capstone, wireless mesh communicator, or emergency response prototype?  
+👉 **[Get your project done at buildproject.in](https://buildproject.in/)** — custom schematics, tested code, and complete academic/industry documentation.
 
 ---
 
