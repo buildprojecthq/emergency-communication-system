@@ -4,6 +4,7 @@
 [![Framework: Arduino](https://img.shields.io/badge/Framework-Arduino-blue.svg)](https://www.arduino.cc/)
 [![Platform: ESP32](https://img.shields.io/badge/Platform-ESP32-red.svg)](https://www.espressif.com/)
 [![LoRa: SX1278](https://img.shields.io/badge/LoRa-SX1278%20433MHz-brightgreen.svg)](https://www.semtech.com/)
+[![Project Showcase](https://img.shields.io/badge/Showcase-buildproject.in-2563EB)](https://buildproject.in/projects/emergency-communication-system/)
 
 A **100% off-grid, standalone handheld emergency communicator** designed for natural disaster zones, remote search-and-rescue, and cellular infrastructure blackouts. 
 
@@ -185,6 +186,11 @@ Before uploading, set the unique identity and GPS wiring in `firmware/lora_spott
 * **Browse Menu:** Tap the **Black Button** to cycle through screens and messages.
 * **Send Selected Alert:** Highlight a message on the menu and tap the **Red Button**.
 * **Instant Emergency Panic:** **Hold the Red Button for 3 seconds** from any screen to blast an immediate distress beacon to all units.
+
+---
+
+> 💡 **Project Showcase & Hardware Documentation:**  
+> SX1278 wiring pinouts, FreeRTOS dual-core task breakdown, disaster mesh field notes, and examiner viva defense Q&As are available on **[buildproject.in/projects/emergency-communication-system](https://buildproject.in/projects/emergency-communication-system/)**.
 
 ---
 
